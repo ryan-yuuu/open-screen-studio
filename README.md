@@ -4,7 +4,7 @@ A free, open-source screen recorder for macOS that automatically makes your reco
 
 ## Why this exists
 
-Screen Studio is amazing but it costs $89. That's a lot if you're a developer, creator, or student who just wants clean demo videos without spending hours editing. So I built this. Record your screen, and the app automatically adds smooth zoom-ins on your clicks, nice backgrounds, rounded corners, and shadows. Then export to MP4 or GIF. That's it.
+Screen Studio is amazing but it costs too much if you're a developer, creator, or student who just wants clean demo videos without spending hours editing. So I built this. Record your screen, and the app automatically adds smooth zoom-ins on your clicks, nice backgrounds, rounded corners, and shadows. Then export to MP4 or GIF. That's it.
 
 This is for builders who want to share their work without the price tag.
 
