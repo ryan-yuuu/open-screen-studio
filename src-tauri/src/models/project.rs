@@ -86,3 +86,43 @@ impl Default for RecordingState {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_project_new_defaults() {
+        let project = Project::new(
+            "test-123".to_string(),
+            "My Recording".to_string(),
+            "/tmp/video.mp4".to_string(),
+            "/tmp/events.json".to_string(),
+            1920,
+            1080,
+            30.0,
+        );
+
+        assert_eq!(project.id, "test-123");
+        assert_eq!(project.name, "My Recording");
+        assert_eq!(project.width, 1920);
+        assert_eq!(project.height, 1080);
+        assert!((project.fps - 30.0).abs() < 1e-10);
+        assert_eq!(project.duration_ms, 0);
+        assert!(project.zoom_config.enabled);
+    }
+
+    #[test]
+    fn test_project_new_created_at_nonzero() {
+        let project = Project::new(
+            "test".to_string(),
+            "Test".to_string(),
+            "".to_string(),
+            "".to_string(),
+            100,
+            100,
+            30.0,
+        );
+        assert!(project.created_at > 0, "created_at should be a real timestamp");
+    }
+}

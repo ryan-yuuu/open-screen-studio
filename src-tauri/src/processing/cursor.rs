@@ -148,3 +148,96 @@ fn get_click_highlight(events: &[MouseEvent], time_ms: u64) -> Option<ClickHighl
             }
         })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::events::MouseButton;
+
+    fn make_event(timestamp_ms: u64, x: f64, y: f64, event_type: EventType) -> MouseEvent {
+        MouseEvent {
+            timestamp_ms,
+            x,
+            y,
+            event_type,
+            button: MouseButton::Left,
+        }
+    }
+
+    fn default_config() -> CursorConfig {
+        CursorConfig::default()
+    }
+
+    #[test]
+    fn test_get_cursor_at_time_empty_events() {
+        let state = get_cursor_at_time(100, &[], &default_config());
+        assert!(!state.visible);
+        assert!((state.x - 0.0).abs() < 1e-10);
+        assert!((state.y - 0.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_get_cursor_at_time_single_event() {
+        let events = vec![make_event(100, 500.0, 300.0, EventType::Move)];
+        let config = CursorConfig {
+            smoothing: 0.0,
+            ..default_config()
+        };
+        let state = get_cursor_at_time(100, &events, &config);
+        assert!((state.x - 500.0).abs() < 1e-10);
+        assert!((state.y - 300.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_check_cursor_visible_after_activity() {
+        let events = vec![make_event(100, 500.0, 300.0, EventType::Move)];
+        // 100ms after activity with 3000ms timeout — should be visible
+        assert!(check_cursor_visible(&events, 0, 200, 3000));
+    }
+
+    #[test]
+    fn test_check_cursor_hidden_after_timeout() {
+        let events = vec![make_event(100, 500.0, 300.0, EventType::Move)];
+        // 5000ms after activity with 3000ms timeout — should be hidden
+        assert!(!check_cursor_visible(&events, 0, 5100, 3000));
+    }
+
+    #[test]
+    fn test_get_click_highlight_no_recent_click() {
+        let events = vec![make_event(100, 500.0, 300.0, EventType::Move)];
+        let result = get_click_highlight(&events, 200);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_get_click_highlight_active_click() {
+        let events = vec![make_event(100, 500.0, 300.0, EventType::Click)];
+        let result = get_click_highlight(&events, 300);
+        assert!(result.is_some());
+        let hl = result.unwrap();
+        assert!((hl.progress - 0.5).abs() < 1e-10); // 200ms into 400ms
+        assert!((hl.x - 500.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_get_click_highlight_expired() {
+        let events = vec![make_event(100, 500.0, 300.0, EventType::Click)];
+        let result = get_click_highlight(&events, 600); // 500ms after click, > 400ms duration
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_smooth_position_zero_smoothing() {
+        let events = vec![
+            make_event(100, 100.0, 100.0, EventType::Move),
+            make_event(200, 500.0, 500.0, EventType::Move),
+        ];
+        let config = CursorConfig {
+            smoothing: 0.0,
+            ..default_config()
+        };
+        let state = get_cursor_at_time(200, &events, &config);
+        assert!((state.x - 500.0).abs() < 1e-10);
+        assert!((state.y - 500.0).abs() < 1e-10);
+    }
+}

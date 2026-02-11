@@ -52,3 +52,55 @@ impl RecordedEvents {
             .collect()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_event(event_type: EventType) -> MouseEvent {
+        MouseEvent {
+            timestamp_ms: 100,
+            x: 0.0,
+            y: 0.0,
+            event_type,
+            button: MouseButton::Left,
+        }
+    }
+
+    #[test]
+    fn test_click_events_filters_correctly() {
+        let events = RecordedEvents {
+            mouse_events: vec![
+                make_event(EventType::Click),
+                make_event(EventType::Move),
+                make_event(EventType::Scroll),
+                make_event(EventType::Click),
+                make_event(EventType::Move),
+            ],
+            recording_start_ms: 0,
+            display_width: 1920.0,
+            display_height: 1080.0,
+        };
+
+        let clicks = events.click_events();
+        assert_eq!(clicks.len(), 2);
+        for click in &clicks {
+            assert!(matches!(click.event_type, EventType::Click));
+        }
+    }
+
+    #[test]
+    fn test_click_events_empty() {
+        let events = RecordedEvents {
+            mouse_events: vec![
+                make_event(EventType::Move),
+                make_event(EventType::Scroll),
+            ],
+            recording_start_ms: 0,
+            display_width: 1920.0,
+            display_height: 1080.0,
+        };
+
+        assert!(events.click_events().is_empty());
+    }
+}
