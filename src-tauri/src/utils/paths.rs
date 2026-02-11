@@ -46,3 +46,32 @@ pub fn project_events_path(project_id: &str) -> PathBuf {
 pub fn project_metadata_path(project_id: &str) -> PathBuf {
     project_dir(project_id).join("project.json")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_project_video_path_contains_id() {
+        let path = project_video_path("abc-123");
+        let path_str = path.to_string_lossy();
+        assert!(path_str.contains("abc-123"), "Path should contain project ID: {path_str}");
+        assert!(path_str.ends_with("recording.mp4"));
+    }
+
+    #[test]
+    fn test_project_events_path_contains_id() {
+        let path = project_events_path("abc-123");
+        let path_str = path.to_string_lossy();
+        assert!(path_str.contains("abc-123"), "Path should contain project ID: {path_str}");
+        assert!(path_str.ends_with("events.json"));
+    }
+
+    #[test]
+    fn test_project_metadata_path_contains_id() {
+        let path = project_metadata_path("abc-123");
+        let path_str = path.to_string_lossy();
+        assert!(path_str.contains("abc-123"), "Path should contain project ID: {path_str}");
+        assert!(path_str.ends_with("project.json"));
+    }
+}

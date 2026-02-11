@@ -292,3 +292,110 @@ fn alpha_blend(bg: &Rgba<u8>, fg: &Rgba<u8>) -> Rgba<u8> {
         (out_a * 255.0).clamp(0.0, 255.0) as u8,
     ])
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_hex_color_6_digit() {
+        let c = parse_hex_color("#FF8800");
+        assert_eq!(c, Rgba([255, 136, 0, 255]));
+    }
+
+    #[test]
+    fn test_parse_hex_color_8_digit() {
+        let c = parse_hex_color("#FF880080");
+        assert_eq!(c, Rgba([255, 136, 0, 128]));
+    }
+
+    #[test]
+    fn test_parse_hex_color_malformed() {
+        let c = parse_hex_color("xyz");
+        assert_eq!(c, Rgba([0, 0, 0, 255]));
+    }
+
+    #[test]
+    fn test_parse_hex_color_no_hash() {
+        let c = parse_hex_color("FF0000");
+        assert_eq!(c, Rgba([255, 0, 0, 255]));
+    }
+
+    #[test]
+    fn test_lerp_u8_boundaries() {
+        assert_eq!(lerp_u8(0, 255, 0.0), 0);
+        assert_eq!(lerp_u8(0, 255, 1.0), 255);
+    }
+
+    #[test]
+    fn test_lerp_u8_midpoint() {
+        let mid = lerp_u8(0, 200, 0.5);
+        assert_eq!(mid, 100);
+    }
+
+    #[test]
+    fn test_alpha_blend_opaque_fg() {
+        let bg = Rgba([100, 100, 100, 255]);
+        let fg = Rgba([200, 50, 50, 255]);
+        let result = alpha_blend(&bg, &fg);
+        assert_eq!(result, Rgba([200, 50, 50, 255]));
+    }
+
+    #[test]
+    fn test_alpha_blend_transparent_fg() {
+        let bg = Rgba([100, 100, 100, 255]);
+        let fg = Rgba([200, 50, 50, 0]);
+        let result = alpha_blend(&bg, &fg);
+        assert_eq!(result[0], 100);
+        assert_eq!(result[1], 100);
+        assert_eq!(result[2], 100);
+        assert_eq!(result[3], 255);
+    }
+
+    #[test]
+    fn test_alpha_blend_semi_transparent() {
+        let bg = Rgba([0, 0, 0, 255]);
+        let fg = Rgba([255, 255, 255, 128]);
+        let result = alpha_blend(&bg, &fg);
+        // fg alpha ~0.502, result should be roughly half white
+        assert!(result[0] > 100 && result[0] < 200);
+        assert_eq!(result[3], 255);
+    }
+
+    #[test]
+    fn test_alpha_blend_both_transparent() {
+        let bg = Rgba([100, 100, 100, 0]);
+        let fg = Rgba([200, 50, 50, 0]);
+        let result = alpha_blend(&bg, &fg);
+        assert_eq!(result[3], 0);
+    }
+
+    #[test]
+    fn test_is_in_rounded_rect_center() {
+        assert!(is_in_rounded_rect(50, 50, 100, 100, 10));
+    }
+
+    #[test]
+    fn test_is_in_rounded_rect_corner_outside() {
+        // (0, 0) in a 100x100 rect with radius 20 — at the very corner
+        assert!(!is_in_rounded_rect(0, 0, 100, 100, 20));
+    }
+
+    #[test]
+    fn test_is_in_rounded_rect_radius_zero() {
+        // All pixels inside when radius is 0
+        assert!(is_in_rounded_rect(0, 0, 100, 100, 0));
+        assert!(is_in_rounded_rect(99, 99, 100, 100, 0));
+    }
+
+    #[test]
+    fn test_calculate_canvas_size() {
+        let style = FrameStyle {
+            padding: 64,
+            ..FrameStyle::default()
+        };
+        let (w, h) = calculate_canvas_size(1920, 1080, &style);
+        assert_eq!(w, 1920 + 128);
+        assert_eq!(h, 1080 + 128);
+    }
+}

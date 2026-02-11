@@ -190,3 +190,57 @@ impl Default for ExportConfig {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_export_resolution_dimensions() {
+        assert_eq!(ExportResolution::R720p.dimensions(), (1280, 720));
+        assert_eq!(ExportResolution::R1080p.dimensions(), (1920, 1080));
+        assert_eq!(ExportResolution::R4k.dimensions(), (3840, 2160));
+        assert_eq!(
+            ExportResolution::Custom { width: 800, height: 600 }.dimensions(),
+            (800, 600)
+        );
+    }
+
+    #[test]
+    fn test_zoom_config_serde_roundtrip() {
+        let config = ZoomConfig::default();
+        let json = serde_json::to_string(&config).unwrap();
+        let deserialized: ZoomConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.enabled, config.enabled);
+        assert!((deserialized.zoom_level - config.zoom_level).abs() < 1e-10);
+        assert_eq!(deserialized.zoom_in_duration_ms, config.zoom_in_duration_ms);
+    }
+
+    #[test]
+    fn test_frame_style_serde_roundtrip() {
+        let style = FrameStyle::default();
+        let json = serde_json::to_string(&style).unwrap();
+        let deserialized: FrameStyle = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.padding, style.padding);
+        assert_eq!(deserialized.corner_radius, style.corner_radius);
+    }
+
+    #[test]
+    fn test_background_serde_roundtrip() {
+        let backgrounds = vec![
+            Background::Solid { color: "#FF0000".to_string() },
+            Background::Gradient {
+                colors: vec!["#000".to_string(), "#FFF".to_string()],
+                angle: 45.0,
+            },
+            Background::Image { path: "/tmp/bg.png".to_string() },
+        ];
+
+        for bg in &backgrounds {
+            let json = serde_json::to_string(bg).unwrap();
+            let deserialized: Background = serde_json::from_str(&json).unwrap();
+            let re_json = serde_json::to_string(&deserialized).unwrap();
+            assert_eq!(json, re_json);
+        }
+    }
+}

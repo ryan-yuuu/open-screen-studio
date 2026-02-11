@@ -191,4 +191,141 @@ mod tests {
         assert!((viewport.zoom - 2.0).abs() < 1e-10);
         assert!((viewport.width - 960.0).abs() < 1e-10);
     }
+
+    #[test]
+    fn test_easing_midpoint() {
+        let linear = apply_easing(0.5, &EasingType::Linear);
+        assert!((linear - 0.5).abs() < 1e-10);
+
+        let ease_in = apply_easing(0.5, &EasingType::EaseIn);
+        assert!(ease_in < 0.5, "EaseIn at midpoint should be below 0.5, got {ease_in}");
+
+        let ease_out = apply_easing(0.5, &EasingType::EaseOut);
+        assert!(ease_out > 0.5, "EaseOut at midpoint should be above 0.5, got {ease_out}");
+
+        let ease_in_out = apply_easing(0.5, &EasingType::EaseInOut);
+        assert!((ease_in_out - 0.5).abs() < 1e-10, "EaseInOut at midpoint should be 0.5, got {ease_in_out}");
+    }
+
+    #[test]
+    fn test_easing_monotonicity() {
+        for easing in &[
+            EasingType::Linear,
+            EasingType::EaseIn,
+            EasingType::EaseOut,
+            EasingType::EaseInOut,
+        ] {
+            let mut prev = 0.0;
+            for i in 1..=100 {
+                let t = i as f64 / 100.0;
+                let val = apply_easing(t, easing);
+                assert!(val >= prev, "Easing {:?} not monotonic at t={t}: {val} < {prev}", easing);
+                prev = val;
+            }
+        }
+    }
+
+    #[test]
+    fn test_zoom_in_phase_partial() {
+        let kf = ZoomKeyframe {
+            start_ms: 1000,
+            end_ms: 2100,
+            center_x: 960.0,
+            center_y: 540.0,
+            peak_zoom: 2.0,
+            zoom_in_ms: 300,
+            hold_ms: 500,
+            zoom_out_ms: 300,
+            easing: EasingType::Linear,
+        };
+
+        // 150ms into a 300ms zoom-in with linear easing = 50% progress = zoom 1.5
+        let viewport = compute_zoom_at_time(1150, &[kf], 1920.0, 1080.0);
+        assert!((viewport.zoom - 1.5).abs() < 1e-10, "Expected zoom 1.5, got {}", viewport.zoom);
+    }
+
+    #[test]
+    fn test_zoom_out_phase() {
+        let kf = ZoomKeyframe {
+            start_ms: 0,
+            end_ms: 1100,
+            center_x: 960.0,
+            center_y: 540.0,
+            peak_zoom: 2.0,
+            zoom_in_ms: 300,
+            hold_ms: 500,
+            zoom_out_ms: 300,
+            easing: EasingType::Linear,
+        };
+
+        // 150ms into the 300ms zoom-out phase (at 950ms total)
+        let viewport = compute_zoom_at_time(950, &[kf], 1920.0, 1080.0);
+        assert!((viewport.zoom - 1.5).abs() < 1e-10, "Expected zoom 1.5, got {}", viewport.zoom);
+    }
+
+    #[test]
+    fn test_zoom_outside_keyframe_returns_no_zoom() {
+        let kf = ZoomKeyframe {
+            start_ms: 1000,
+            end_ms: 2100,
+            center_x: 960.0,
+            center_y: 540.0,
+            peak_zoom: 2.0,
+            zoom_in_ms: 300,
+            hold_ms: 500,
+            zoom_out_ms: 300,
+            easing: EasingType::Linear,
+        };
+
+        let viewport = compute_zoom_at_time(500, &[kf.clone()], 1920.0, 1080.0);
+        assert!((viewport.zoom - 1.0).abs() < 1e-10);
+
+        let viewport = compute_zoom_at_time(3000, &[kf], 1920.0, 1080.0);
+        assert!((viewport.zoom - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_viewport_clamping_near_edge() {
+        let kf = ZoomKeyframe {
+            start_ms: 0,
+            end_ms: 1100,
+            center_x: 10.0,  // very near left edge
+            center_y: 10.0,  // very near top edge
+            peak_zoom: 2.0,
+            zoom_in_ms: 300,
+            hold_ms: 500,
+            zoom_out_ms: 300,
+            easing: EasingType::Linear,
+        };
+
+        let viewport = compute_zoom_at_time(400, &[kf], 1920.0, 1080.0);
+        assert!(viewport.x >= 0.0, "Crop x should not be negative, got {}", viewport.x);
+        assert!(viewport.y >= 0.0, "Crop y should not be negative, got {}", viewport.y);
+        assert!(viewport.x + viewport.width <= 1920.0, "Crop should not exceed source width");
+        assert!(viewport.y + viewport.height <= 1080.0, "Crop should not exceed source height");
+    }
+
+    #[test]
+    fn test_generate_zoom_keyframes_empty_events() {
+        let config = ZoomConfig::default();
+        let result = generate_zoom_keyframes(&[], &config);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_generate_zoom_keyframes_disabled() {
+        let config = ZoomConfig {
+            enabled: false,
+            ..ZoomConfig::default()
+        };
+        let event = MouseEvent {
+            timestamp_ms: 100,
+            x: 500.0,
+            y: 300.0,
+            event_type: crate::models::events::EventType::Click,
+            button: crate::models::events::MouseButton::Left,
+        };
+        let result = generate_zoom_keyframes(&[&event], &config);
+        assert!(result.is_empty());
+    }
 }
