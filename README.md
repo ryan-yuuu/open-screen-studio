@@ -1,3 +1,4 @@
+# DOES NOT WORK RN. Open a PR if you'd like to work together on this.
 # Open Screen Studio
 
 A free, open-source screen recorder for macOS that automatically makes your recordings look polished. Think Screen Studio, but free and built for the community.
